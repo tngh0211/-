@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>단순한 생태계 vs 복잡한 생태계</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#f1f5ef;--card:#fff;--ink:#1d2a22;--sub:#5b6b60;--line:#d5ded3;--btn:#1d2a22;--btnt:#fff;--ok:#2f7d32;--bad:#b3341f;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121a15;--card:#1b261f;--ink:#e8efe9;--sub:#9db0a2;--line:#2c3b31;--btn:#e8efe9;--btnt:#121a15;--ok:#7fd183;--bad:#ff8a73}}
+:root[data-theme="dark"]{--bg:#121a15;--card:#1b261f;--ink:#e8efe9;--sub:#9db0a2;--line:#2c3b31;--btn:#e8efe9;--btnt:#121a15;--ok:#7fd183;--bad:#ff8a73}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.55}
+main{max-width:900px;margin:0 auto;padding:16px}
+h1{font-size:1.4rem;margin:4px 0 2px}
+.lead{color:var(--sub);margin:0 0 14px;font-size:.95rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h2{font-size:1.05rem;margin:0}
+.hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.alive{font-size:1.3rem;font-weight:700}
+.alive.ok{color:var(--ok)}.alive.bad{color:var(--bad)}
+.sub{color:var(--sub);font-size:.85rem}
+svg{width:100%;height:auto;display:block}
+canvas{width:100%;height:210px;display:block;margin-top:6px}
+.sp{display:grid;grid-template-columns:7.2em 1fr 3em;gap:4px 8px;align-items:center;font-size:.9rem;margin-top:8px}
+.sp i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.sp input{width:100%;min-width:0}
+.sp output{text-align:right;color:var(--sub)}
+.sp .x{opacity:.45}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+button,select{font:inherit;border-radius:10px;border:1px solid var(--line);padding:9px 14px;background:var(--card);color:var(--ink);cursor:pointer}
+button.main{background:var(--btn);color:var(--btnt);border-color:var(--btn);font-weight:700}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #d99a2b;outline-offset:2px}
+button.ev{flex:1 1 150px;text-align:left}
+button.ev small{display:block;color:var(--sub);font-size:.78rem}
+.note{border-left:5px solid var(--ok);background:var(--card);padding:12px 14px;border-radius:0 12px 12px 0;font-size:1.02rem;min-height:3.6em;margin-bottom:12px}
+.q{color:var(--sub);font-size:.9rem;margin:0;padding-left:1.2em}.q li{margin:4px 0}
+</style>
+</head>
+<body>
+<main>
+<h1>단순한 생태계 vs 복잡한 생태계</h1>
+<p class="lead">같은 충격을 두 생태계에 동시에 주면 어떻게 달라질까요?</p>
+
+<section class="card">
+<h2>두 생태계에 똑같은 충격 주기</h2>
+<div class="row" style="margin-top:8px">
+<button class="ev" data-e="rab">토끼 멸종<small>질병으로 토끼가 모두 사라져요</small></button>
+<button class="ev" data-e="dry">가뭄<small>풀이 90% 줄어요</small></button>
+<button class="ev" data-e="top">최상위 포식자 제거<small>여우 / 호랑이가 사라져요</small></button>
+</div>
+<div class="row" style="margin-top:10px">
+<button class="main" id="play">일시정지</button>
+<button id="reset">처음부터</button>
+<label class="sub" style="align-self:center">속도 <select id="spd"><option value="0.5">느리게</option><option value="1" selected>보통</option><option value="3">빠르게</option></select></label>
+</div>
+</section>
+
+<div class="note" id="note" aria-live="polite"></div>
+<div id="eco"></div>
+
+<section class="card">
+<h2>생각해 볼 질문</h2>
+<ul class="q">
+<li>토끼가 사라졌을 때 생태계 1의 여우와 생태계 2의 여우는 왜 다른 운명을 맞을까요?</li>
+<li>슬라이더로 종을 하나씩 0으로 만들어 보세요. 몇 종까지 없애면 생태계가 무너질까요?</li>
+</ul>
+</section>
+</main>
+
+<script>
+(function(){
+var PAL=['#4a9a3c','#9ab81f','#d99a2b','#a8723f','#8b8f99','#1f9bb0','#7b5fc4','#e0622d','#2f6fd0','#c42f55'];
+var K=1000,RG=0.8,EFF=0.4,H=120,REF=10;
+var DEFS=[
+{title:'생태계 1 · 단순한 먹이사슬',sp:['풀','토끼','여우'],ci:[0,2,7],prey:[[],[0],[1]],N0:[800,100,20],a:[0,.8,1],m:[0,.1,.08],rab:1,top:2},
+{title:'생태계 2 · 복잡한 먹이그물',sp:['풀','메뚜기','토끼','사슴','쥐','개구리','뱀','여우','독수리','호랑이'],ci:[0,1,2,3,4,5,6,7,8,9],
+prey:[[],[0],[0],[0],[0],[1],[5,4],[2,4,5],[6,4,2],[3,2,7]],N0:[800,80,80,80,80,30,30,30,30,30],
+a:[0,.8,.8,.8,.8,1,1,1,1,1],m:[0,.1,.1,.1,.1,.08,.08,.08,.08,.06],rab:2,top:9}];
+var T=0,last=0,running=true,spd=1,drag=null;
+var root=document.getElementById('eco');
+function lvl(E,i){if(!E.prey[i].length)return 0;var m=0;E.prey[i].forEach(function(j){m=Math.max(m,lvl(E,j))});return m+1}
+function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function build(E,k){
+E.n=E.sp.length;E.hist=[];E.lv=E.sp.map(function(_,i){return lvl(E,i)});
+var mx=Math.max.apply(null,E.lv),W=360,Hh=40+mx*52,cnt={},pos=[];
+E.lv.forEach(function(l){cnt[l]=(cnt[l]||0)+1});
+var seen={};
+E.sp.forEach(function(_,i){var l=E.lv[i];seen[l]=(seen[l]||0)+1;pos[i]=[W*seen[l]/(cnt[l]+1),Hh-24-l*52]});
+var s='<svg viewBox="0 0 '+W+' '+Hh+'" role="img" aria-label="'+E.title+' 먹이그물">';
+E.prey.forEach(function(p,i){p.forEach(function(j){s+='<line x1="'+pos[j][0]+'" y1="'+pos[j][1]+'" x2="'+pos[i][0]+'" y2="'+pos[i][1]+'" stroke="var(--sub)" stroke-width="1.4" opacity=".45"/>'})});
+E.sp.forEach(function(nm,i){s+='<circle id="n'+k+'_'+i+'" cx="'+pos[i][0]+'" cy="'+pos[i][1]+'" r="8" fill="'+PAL[E.ci[i]]+'"/><text x="'+pos[i][0]+'" y="'+(pos[i][1]+26)+'" text-anchor="middle" font-size="11" fill="var(--ink)">'+nm+'</text>'});
+s+='</svg>';
+var rows='';
+E.sp.forEach(function(nm,i){rows+='<span id="l'+k+'_'+i+'"><i style="background:'+PAL[E.ci[i]]+'"></i>'+nm+'</span><input type="range" aria-label="'+nm+' 개체수" id="s'+k+'_'+i+'" min="0" max="'+(i?200:1000)+'" step="1" value="0"><output id="o'+k+'_'+i+'"></output>'});
+var sec=document.createElement('section');sec.className='card';
+sec.innerHTML='<div class="hd"><h2>'+E.title+'</h2><span class="alive" id="al'+k+'"></span></div><div class="sub">선은 먹고 먹히는 관계(아래가 먹이), 원 크기는 개체수</div>'+s+'<canvas id="cv'+k+'" aria-label="개체수 그래프"></canvas><div class="sub">초록 계열 선은 풀(왼쪽 축), 나머지는 동물(오른쪽 축)</div><div class="sp">'+rows+'</div>';
+root.appendChild(sec);
+E.cv=sec.querySelector('canvas');
+E.sp.forEach(function(_,i){var el=document.getElementById('s'+k+'_'+i);
+el.addEventListener('input',function(){E.N[i]=parseFloat(el.value);push(E)});
+el.addEventListener('pointerdown',function(){drag=k+'_'+i});
+el.addEventListener('pointerup',function(){drag=null});
+el.addEventListener('change',function(){drag=null})});
+E.k=k}
+function init(E){E.N=E.N0.slice();E.hist=[];push(E)}
+function push(E){E.hist.push(E.N.slice());if(E.hist.length>400)E.hist.shift()}
+function step(E,dt){
+var N=E.N,n=E.n,d=[];for(var i=0;i<n;i++)d[i]=0;
+for(var i=0;i<n;i++){var p=E.prey[i];
+if(!p.length){d[i]+=RG*N[i]*(1-N[i]/K);continue}
+var av=p.map(function(j){return Math.max(N[j]-REF,0)}),S=0;av.forEach(function(x){S+=x});
+for(var q=0;q<p.length;q++){var e=N[i]*E.a[i]*av[q]/(S+H);d[p[q]]-=e;d[i]+=EFF*e}
+d[i]-=E.m[i]*N[i]}
+for(var i=0;i<n;i++){N[i]=Math.max(0,N[i]+d[i]*dt);if(N[i]<0.5)N[i]=0}}
+function draw(E){
+var cv=E.cv,ctx=cv.getContext('2d'),dpr=window.devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;
+if(cv.width!==Math.round(w*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr)}
+ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);
+var L=36,R=36,Tp=8,B=6,pw=w-L-R,ph=h-Tp-B,am=60;
+E.hist.forEach(function(r){for(var i=1;i<r.length;i++)am=Math.max(am,r[i]*1.1)});am=Math.ceil(am/20)*20;
+ctx.font='11px sans-serif';ctx.strokeStyle=css('--line');ctx.fillStyle=css('--sub');ctx.lineWidth=1;
+for(var g=0;g<=4;g++){var y=Tp+ph*g/4;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(L+pw,y);ctx.stroke();
+ctx.textAlign='right';ctx.fillText(Math.round(K*(1-g/4)),L-4,y+4);ctx.textAlign='left';ctx.fillText(Math.round(am*(1-g/4)),L+pw+4,y+4)}
+for(var s=0;s<E.n;s++){ctx.beginPath();ctx.strokeStyle=PAL[E.ci[s]];ctx.lineWidth=s?2:3;
+var mx=s?am:K;
+E.hist.forEach(function(r,j){var x=L+pw*j/399,y=Tp+ph*(1-Math.min(1,r[s]/mx));j?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}}
+function ui(E){
+var k=E.k,al=0;
+E.sp.forEach(function(_,i){var v=E.N[i];if(v>0)al++;
+var c=document.getElementById('n'+k+'_'+i);
+c.setAttribute('r',(i?4+Math.min(11,Math.sqrt(v)*1.6):5+Math.min(11,Math.sqrt(v)/3)).toFixed(1));
+c.setAttribute('opacity',v>0?1:.18);
+document.getElementById('l'+k+'_'+i).className=v>0?'':'x';
+var o=document.getElementById('o'+k+'_'+i);o.textContent=v>0?Math.round(v):'멸종';
+var s=document.getElementById('s'+k+'_'+i);if(drag!==k+'_'+i)s.value=Math.round(v)});
+E.alive=al;
+var a=document.getElementById('al'+k);a.textContent='생존 '+al+' / '+E.n+'종';a.className='alive '+(al===E.n?'ok':'bad')}
+var lastNote='';
+function note(){
+var a=DEFS[0],b=DEFS[1],t;
+if(a.alive===a.n&&b.alive===b.n)t='두 생태계 모두 모든 종이 살아 있어요. 위의 충격 버튼을 눌러 비교해 보세요.';
+else if(a.alive<a.n&&b.alive===b.n)t='생태계 1은 무너졌지만 생태계 2는 모든 종이 버텼어요. 먹이가 여러 종류라서 한 종이 사라져도 다른 먹이로 버틸 수 있기 때문이에요.';
+else if(a.alive<a.n&&b.alive<b.n&&a.alive/a.n<b.alive/b.n)t='두 생태계 모두 종이 줄었지만, 생태계 2는 비율로 더 많은 종이 살아남았어요. 어떤 종이 사라졌는지 살펴볼까요?';
+else if(a.alive===a.n&&b.alive<b.n)t='이번엔 생태계 2에서 종이 사라졌어요. 복잡한 생태계도 핵심이 되는 종이 사라지면 크게 흔들릴 수 있어요.';
+else t='생태계 2에서 어떤 종이 사라졌는지, 그 이유가 무엇인지 그래프와 먹이그물에서 찾아보세요.';
+if(t!==lastNote){document.getElementById('note').textContent=t;lastNote=t}}
+DEFS.forEach(function(E,k){build(E,k);init(E)});
+function frame(){
+if(running){var n=Math.round(spd*10);
+for(var i=0;i<n;i++){DEFS.forEach(function(E){step(E,0.02)});T+=0.02;if(T-last>=0.5){last=T;DEFS.forEach(push)}}}
+DEFS.forEach(function(E){draw(E);ui(E)});note();requestAnimationFrame(frame)}
+document.getElementById('play').onclick=function(){running=!running;this.textContent=running?'일시정지':'재생'};
+document.getElementById('reset').onclick=function(){T=0;last=0;DEFS.forEach(init)};
+document.getElementById('spd').onchange=function(){spd=parseFloat(this.value)};
+var EV={rab:function(E){E.N[E.rab]=0},dry:function(E){E.N[0]*=0.1},top:function(E){E.N[E.top]=0}};
+var bs=document.querySelectorAll('.ev');
+for(var i=0;i<bs.length;i++)bs[i].onclick=function(){var f=EV[this.dataset.e];DEFS.forEach(function(E){f(E);push(E)})};
+frame();
+})();
+</script>
+</body>
+</html>
